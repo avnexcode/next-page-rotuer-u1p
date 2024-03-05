@@ -1,8 +1,9 @@
-import { signIn } from "@/lib/firebase/service";
+import { signIn, signInWithGoogle } from "@/lib/firebase/service";
 import { compare } from "bcrypt";
 import { NextAuthOptions } from "next-auth";
 import NextAuth from "next-auth/next";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 
 const authOptions: NextAuthOptions = {
     session: {
@@ -18,14 +19,14 @@ const authOptions: NextAuthOptions = {
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
-                const { email, password} = credentials as {
+                const { email, password } = credentials as {
                     email: string;
                     password: string;
                 }
-                const user: any = await signIn({email})
+                const user: any = await signIn({ email })
                 if (user) {
                     const passwordConfirm = await compare(password, user.password)
-                    if(passwordConfirm) {
+                    if (passwordConfirm) {
                         return user
                     }
                     return null
@@ -33,26 +34,56 @@ const authOptions: NextAuthOptions = {
                     return null
                 }
             }
+        }),
+        GoogleProvider({
+            clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || "",
+            clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET || "",
         })
     ],
     callbacks: {
-        jwt({token, account, profile, user}: any) {
-            if(account?.provider === "credentials") {
+        async jwt({ token, account, profile, user }: any) {
+            if (account?.provider === "credentials") {
                 token.email = user.email
                 token.password = user.password
                 token.username = user.username
                 token.role = user.role
             }
+            if (account?.provider === "google") {
+                const data = {
+                    username: user.name,
+                    email: user.email,
+                    image: user.image,
+                    type: "google",
+                    role: "member"
+                }
+
+                await signInWithGoogle(data, (result: any) => {
+                    if (result.status) {
+                        token.username = result.data.username
+                        token.email = result.data.email
+                        token.image = result.data.image
+                        token.type = result.data.type
+                        token.role = result.data.role
+                    }
+                })
+
+            }
             return token
         },
-        async session({session, token}: any) {
-            if("email" in token) {
+        async session({ session, token }: any) {
+            if ("email" in token) {
                 session.user.email = token.email
             }
-            if("username" in token) {
+            if ("username" in token) {
                 session.user.username = token.username
             }
-            if("role" in token) {
+            if ("image" in token) {
+                session.user.image = token.image
+            }
+            if ("type" in token) {
+                session.user.type = token.type
+            }
+            if ("role" in token) {
                 session.user.role = token.role
             }
             return session

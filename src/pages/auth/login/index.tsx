@@ -33,9 +33,8 @@ export default function Index() {
     }
     return (
         <>
-            {error ? <p>{error}</p>: null}
+            {error ? <p>{error}</p> : null}
             <form
-                method="post"
                 className="flex flex-col gazp-4 p-5"
                 onSubmit={handleSubmit}
             >
@@ -55,7 +54,6 @@ export default function Index() {
                         type="password"
                         name="password"
                         id="password"
-                        value={"password"}
                         className="max-w-md border-2 p-1 text-lg font-semibold"
                     />
                 </div>
@@ -71,6 +69,14 @@ export default function Index() {
                     </span>
                 </div>
             </form>
+            <div>
+                <button onClick={() => {
+                    signIn("google", {
+                        callbackUrl,
+                        redirect: false
+                    })
+                }}>Google</button>
+            </div>
         </>
     );
 }
