@@ -1,3 +1,5 @@
+import { signIn } from "@/lib/firebase/service";
+import { compare } from "bcrypt";
 import { NextAuthOptions } from "next-auth";
 import NextAuth from "next-auth/next";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -14,18 +16,19 @@ const authOptions: NextAuthOptions = {
             credentials: {
                 email: { label: "Email", type: "email" },
                 password: { label: "Password", type: "password" },
-                fullname: { label: "Full Name", type: "text" },
             },
             async authorize(credentials) {
-                const { email, password, fullname } = credentials as {
+                const { email, password} = credentials as {
                     email: string;
                     password: string;
-                    fullname: string;
                 }
-                const user: any = { id: 1, email: email, password: password, fullname: fullname }
+                const user: any = await signIn({email})
                 if (user) {
-                    console.log({user})
-                    return user
+                    const passwordConfirm = await compare(password, user.password)
+                    if(passwordConfirm) {
+                        return user
+                    }
+                    return null
                 } else {
                     return null
                 }
@@ -36,25 +39,27 @@ const authOptions: NextAuthOptions = {
         jwt({token, account, profile, user}: any) {
             if(account?.provider === "credentials") {
                 token.email = user.email
-                token.fullname = user.fullname
                 token.password = user.password
+                token.username = user.username
+                token.role = user.role
             }
-            console.log({token, account, user})
             return token
         },
         async session({session, token}: any) {
             if("email" in token) {
                 session.user.email = token.email
             }
-            if("fullname" in token) {
-                session.user.fullname = token.fullname
+            if("username" in token) {
+                session.user.username = token.username
             }
-            if("password" in token) {
-                session.user.password = token.password
+            if("role" in token) {
+                session.user.role = token.role
             }
-            console.log({session, token})
             return session
         }
+    },
+    pages: {
+        signIn: "/auth/login"
     }
 }
 
